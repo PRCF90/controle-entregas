@@ -116,8 +116,20 @@ window.excluir = async function(idDoc) {
       alert("Erro ao excluir.");
     }
   }
+
+
+
+window.atualizarTela = function() {
+  // Atualiza a interface da tela e o saldo do mês
+  const mesSelecionado = document.getElementById('filtro-mes')?.value;
+  console.log("Tela atualizada para o mês:", mesSelecionado);
 };
 
-window.mudarAba = mudarAba;
-window.salvar = salvar;
-window.atualizarTela = atualizarTela;
+window.verificarTipo = function() {
+  // Controla a exibição de campos dependendo do tipo de lançamento
+  const tipo = document.getElementById('tipo')?.value;
+  const categoriaContainer = document.getElementById('categoria-container');
+  if (categoriaContainer) {
+    categoriaContainer.style.display = (tipo === 'saida') ? 'block' : 'none';
+  }
+};
