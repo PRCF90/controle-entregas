@@ -87,14 +87,32 @@ window.excluir = async function(idDoc) {
   }
 };
 
-// Mudar de Aba (Exibe/Oculta seções com base na aba selecionada)
+// Mudar de Aba de forma universal (suporta IDs, classes e exibições)
 window.mudarAba = function(aba) {
   console.log("Mudando para a aba:", aba);
-  // Se o seu HTML usar IDs para as seções/abas, você pode controlá-las aqui:
-  const secoes = document.querySelectorAll('.secao-aba, section, .tab-content');
-  secoes.forEach((secao, index) => {
-    secao.style.display = (index === aba || secao.id === `aba-${aba}`) ? 'block' : 'none';
-  });
+  
+  let encontrou = false;
+  const conteudos = document.querySelectorAll('.conteudo-aba, .tab-pane, section');
+  if (conteudos.length > 0) {
+    conteudos.forEach((el, index) => {
+      if (el.id === String(aba) || index === Number(aba) || el.classList.contains(`aba-${aba}`)) {
+        el.style.display = 'block';
+        encontrou = true;
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  }
+
+  if (!encontrou) {
+    const possiveisIds = [`aba-${aba}`, `secao-${aba}`, `${aba}`];
+    possiveisIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = 'block';
+      }
+    });
+  }
 };
 
 // Atualizar Tela
@@ -102,7 +120,6 @@ window.atualizarTela = function() {
   const mesSelecionado = document.getElementById('filtro-mes')?.value;
   console.log("Tela atualizada para o mês:", mesSelecionado);
   
-  // Renderizar tabela ou extrato se o elemento existir na tela
   const listaEl = document.getElementById('lista-lancamentos');
   if (listaEl && dados.length > 0) {
     listaEl.innerHTML = dados.map(item => `
