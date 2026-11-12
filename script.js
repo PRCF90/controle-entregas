@@ -1,21 +1,20 @@
-// Importações do Firebase (SDK Modular v10 via CDN)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Credenciais reais do seu projeto Firebase (já configuradas)
+// Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyD-q2ZVhz6BvC7vydGD8e3LBUgb2TZvc",
-    authDomain: "controle-de-entregas-f826e.firebaseapp.com",
-    projectId: "controle-de-entregas-f826e",
-    storageBucket: "controle-de-entregas-f826e.firebasestorage.app",
-    messagingSenderId: "344407439902",
-    appId: "1:344407439902:web:5fdbf39341b9f881b9cc0f"
+  apiKey: "AIzaSyDV-q2ZVhz6BvC7vyDG8D8e3LBUGb2TZvc",
+  authDomain: "controle-de-entregas-f826e.firebaseapp.com",
+  projectId: "controle-de-entregas-f826e",
+  storageBucket: "controle-de-entregas-f826e.firebasestorage.app",
+  messagingSenderId: "344407439902",
+  appId: "1:344407439902:web:5fdbf39341b9f881b9cc0f"
 };
 
-// Inicializar Firebase
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const COLECAO = "lancamentos_entregas";
 
 let dados = [];
 document.getElementById('data').valueAsDate = new Date();
