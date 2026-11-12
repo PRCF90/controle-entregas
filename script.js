@@ -108,14 +108,17 @@ async function salvar() {
 }
 
 window.excluir = async function(idDoc) {
-    if (confirm('Deseja realmente excluir este lançamento da nuvem?')) {
-        try {
-            await deleteDoc(doc(db, COLECAO, idDoc));
-            await carregarDadosDoFirebase();
-        } catch (error) {
-            console.error("Erro ao excluir: ", error);
-            alert("Erro ao excluir.");
+  if (confirm("Deseja realmente excluir este lançamento da nuvem?")) {
+    try {
+      await deleteDoc(doc(db, COLECAO, idDoc));
+      await carregarDadosDoFirebase();
+    } catch (error) {
+      console.error("Erro ao excluir: ", error);
+      alert("Erro ao excluir.");
+    }
+  }
+};
+
 window.mudarAba = mudarAba;
 window.salvar = salvar;
-window.excluir = excluir;
 window.atualizarTela = atualizarTela;
