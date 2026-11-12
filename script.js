@@ -1,8 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDV-q2ZVhz6BvC7vyDG8D8e3LBUGb2TZvc",
   authDomain: "controle-de-entregas-f826e.firebaseapp.com",
@@ -12,8 +10,11 @@ const firebaseConfig = {
   appId: "1:344407439902:web:5fdbf39341b9f881b9cc0f"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const COLECAO = "lancamentos";
+// Initialize Firebase
+
 
 let dados = [];
 document.getElementById('data').valueAsDate = new Date();
