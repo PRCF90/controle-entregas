@@ -38,7 +38,9 @@ async function carregarDadosDoFirebase() {
 }
 
 // Salvar Lançamento
-window.salvar = async function() {
+window.salvar = async function(event) {
+  if (event) event.preventDefault();
+
   const tipo = document.getElementById('tipo')?.value || 'entrada';
   const aplicativo = document.getElementById('aplicativo')?.value || '99 Food';
   const data = document.getElementById('data')?.value;
@@ -85,15 +87,28 @@ window.excluir = async function(idDoc) {
   }
 };
 
-// Mudar de Aba
+// Mudar de Aba (Exibe/Oculta seções com base na aba selecionada)
 window.mudarAba = function(aba) {
   console.log("Mudando para a aba:", aba);
+  // Se o seu HTML usar IDs para as seções/abas, você pode controlá-las aqui:
+  const secoes = document.querySelectorAll('.secao-aba, section, .tab-content');
+  secoes.forEach((secao, index) => {
+    secao.style.display = (index === aba || secao.id === `aba-${aba}`) ? 'block' : 'none';
+  });
 };
 
 // Atualizar Tela
 window.atualizarTela = function() {
   const mesSelecionado = document.getElementById('filtro-mes')?.value;
   console.log("Tela atualizada para o mês:", mesSelecionado);
+  
+  // Renderizar tabela ou extrato se o elemento existir na tela
+  const listaEl = document.getElementById('lista-lancamentos');
+  if (listaEl && dados.length > 0) {
+    listaEl.innerHTML = dados.map(item => `
+      <div>${item.data} - ${item.aplicativo} - R$ ${item.valor} (${item.tipo})</div>
+    `).join('');
+  }
 };
 
 // Verificar Tipo
