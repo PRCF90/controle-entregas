@@ -15,7 +15,10 @@ const db = getFirestore(app);
 const COLECAO = "lancamentos";
 
 let dados = [];
-document.getElementById('data').valueAsDate = new Date();
+const dataInputEl = document.getElementById('data');
+if (dataInputEl) {
+  dataInputEl.valueAsDate = new Date();
+}
 
 // Carregar dados do Firebase ao iniciar a página
 async function carregarDadosDoFirebase() {
@@ -36,11 +39,12 @@ async function carregarDadosDoFirebase() {
 
 // Salvar Lançamento
 window.salvar = async function() {
-  const tipo = document.getElementById('tipo').value;
-  const aplicativo = document.getElementById('aplicativo').value;
-  const data = document.getElementById('data').value;
-  const descricao = document.getElementById('descricao').value;
-  const valor = parseFloat(document.getElementById('valor').value) || 0;
+  const tipo = document.getElementById('tipo')?.value || 'entrada';
+  const aplicativo = document.getElementById('aplicativo')?.value || '99 Food';
+  const data = document.getElementById('data')?.value;
+  const descricao = document.getElementById('descricao')?.value || '';
+  const valorInput = document.getElementById('valor')?.value;
+  const valor = parseFloat(valorInput ? valorInput.replace(',', '.') : '0') || 0;
 
   if (!data || valor <= 0) {
     alert("Por favor, preencha a data e um valor válido.");
@@ -52,9 +56,15 @@ window.salvar = async function() {
   try {
     await addDoc(collection(db, COLECAO), novoLancamento);
     alert("Lançamento salvo com sucesso!");
-    document.getElementById('descricao').value = '';
-    document.getElementById('valor').value = '';
-    document.getElementById('data').valueAsDate = new Date();
+    
+    // Limpar campos de forma segura
+    const descEl = document.getElementById('descricao');
+    if (descEl) descEl.value = '';
+    const valorEl = document.getElementById('valor');
+    if (valorEl) valorEl.value = '';
+    const dataEl = document.getElementById('data');
+    if (dataEl) dataEl.valueAsDate = new Date();
+
     await carregarDadosDoFirebase();
   } catch (error) {
     console.error("Erro ao salvar lançamento: ", error);
