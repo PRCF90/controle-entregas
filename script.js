@@ -13,99 +13,56 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const COLECAO = "lancamentos";
-// Initialize Firebase
-
 
 let dados = [];
 document.getElementById('data').valueAsDate = new Date();
 
 // Carregar dados do Firebase ao iniciar a página
 async function carregarDadosDoFirebase() {
-    try {
-        const q = query(collection(db, COLECAO), orderBy("data", "desc"));
-        const querySnapshot = await getDocs(q);
-        dados = [];
-        querySnapshot.forEach((docSnap) => {
-            dados.push({ idDoc: docSnap.id, ...docSnap.data() });
-        });
-        atualizarTela();
-    } catch (error) {
-        console.error("Erro ao carregar dados do Firebase: ", error);
-        alert("Erro ao sincronizar com o Firebase. Verifique as credenciais.");
-    }
-}
-
-function mudarAba(index) {
-    const botoes = document.querySelectorAll('.tab');
-    const conteudos = document.querySelectorAll('.content');
-    
-    botoes.forEach((btn, i) => {
-        btn.classList.toggle('active', i === index);
-        conteudos[i].classList.toggle('active', i === index);
+  try {
+    const q = query(collection(db, COLECAO), orderBy("data", "desc"));
+    const querySnapshot = await getDocs(q);
+    dados = [];
+    querySnapshot.forEach((docSnap) => {
+      dados.push({ id: docSnap.id, ...docSnap.data() });
     });
+    if (typeof window.atualizarTela === 'function') {
+      window.atualizarTela();
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados do Firebase: ", error);
+  }
 }
 
-function verificarTipo() {
-    const tipo = document.getElementById('tipo').value;
-    if (tipo === 'entrada') {
-        document.getElementById('bloco-app').style.display = 'block';
-        document.getElementById('bloco-categoria').style.display = 'none';
-    } else {
-        document.getElementById('bloco-app').style.display = 'none';
-        document.getElementById('bloco-categoria').style.display = 'block';
-    }
-}
+// Salvar Lançamento
+window.salvar = async function() {
+  const tipo = document.getElementById('tipo').value;
+  const aplicativo = document.getElementById('aplicativo').value;
+  const data = document.getElementById('data').value;
+  const descricao = document.getElementById('descricao').value;
+  const valor = parseFloat(document.getElementById('valor').value) || 0;
 
-async function salvar() {
-    const tipo = document.getElementById('tipo').value;
-    const data = document.getElementById('data').value;
-    const descricao = document.getElementById('descricao').value.trim();
-    const valor = parseFloat(document.getElementById('valor').value);
-    
-    let categoria = '';
-    let appOrigem = '';
+  if (!data || valor <= 0) {
+    alert("Por favor, preencha a data e um valor válido.");
+    return;
+  }
 
-    if (tipo === 'entrada') {
-        appOrigem = document.getElementById('app-origem').value;
-        categoria = appOrigem;
-    } else {
-        categoria = document.getElementById('categoria').value.trim() || 'Despesa Geral';
-        appOrigem = 'Despesa';
-    }
+  const novoLancamento = { tipo, aplicativo, data, descricao, valor };
 
-    if (!data || isNaN(valor) || valor <= 0) {
-        alert('Informe uma data válida e um valor maior que zero!');
-        return;
-    }
+  try {
+    await addDoc(collection(db, COLECAO), novoLancamento);
+    alert("Lançamento salvo com sucesso!");
+    document.getElementById('descricao').value = '';
+    document.getElementById('valor').value = '';
+    document.getElementById('data').valueAsDate = new Date();
+    await carregarDadosDoFirebase();
+  } catch (error) {
+    console.error("Erro ao salvar lançamento: ", error);
+    alert("Erro ao salvar no Firebase.");
+  }
+};
 
-    const novoLancamento = {
-        tipo,
-        data,
-        categoria,
-        appOrigem,
-        descricao,
-        valor,
-        criadoEm: Date.now()
-    };
-
-    try {
-        // Salva diretamente na nuvem do Firebase
-        await addDoc(collection(db, COLECAO), novoLancamento);
-        
-        document.getElementById('filtro-mes').value = data.slice(0, 7);
-        document.getElementById('descricao').value = '';
-        document.getElementById('valor').value = '';
-        if(tipo === 'saida') document.getElementById('categoria').value = '';
-
-        // Recarrega os dados atualizados da nuvem
-        await carregarDadosDoFirebase();
-        mudarAba(1);
-    } catch (error) {
-        console.error("Erro ao salvar lançamento: ", error);
-        alert("Erro ao salvar no Firebase.");
-    }
-}
-
+// Excluir Lançamento
 window.excluir = async function(idDoc) {
   if (confirm("Deseja realmente excluir este lançamento da nuvem?")) {
     try {
@@ -116,20 +73,29 @@ window.excluir = async function(idDoc) {
       alert("Erro ao excluir.");
     }
   }
+};
 
+// Mudar de Aba
+window.mudarAba = function(aba) {
+  console.log("Mudando para a aba:", aba);
+};
 
-
+// Atualizar Tela
 window.atualizarTela = function() {
-  // Atualiza a interface da tela e o saldo do mês
   const mesSelecionado = document.getElementById('filtro-mes')?.value;
   console.log("Tela atualizada para o mês:", mesSelecionado);
 };
 
+// Verificar Tipo
 window.verificarTipo = function() {
-  // Controla a exibição de campos dependendo do tipo de lançamento
   const tipo = document.getElementById('tipo')?.value;
   const categoriaContainer = document.getElementById('categoria-container');
   if (categoriaContainer) {
     categoriaContainer.style.display = (tipo === 'saida') ? 'block' : 'none';
   }
 };
+
+// Inicialização ao carregar a página
+window.addEventListener('DOMContentLoaded', () => {
+  carregarDadosDoFirebase();
+});
