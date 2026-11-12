@@ -15,6 +15,8 @@ const db = getFirestore(app);
 const COLECAO = "lancamentos";
 
 let dados = [];
+
+// Definir data atual no input ao carregar
 const dataInputEl = document.getElementById('data');
 if (dataInputEl) {
   dataInputEl.valueAsDate = new Date();
@@ -29,9 +31,7 @@ async function carregarDadosDoFirebase() {
     querySnapshot.forEach((docSnap) => {
       dados.push({ id: docSnap.id, ...docSnap.data() });
     });
-    if (typeof window.atualizarTela === 'function') {
-      window.atualizarTela();
-    }
+    atualizarTela();
   } catch (error) {
     console.error("Erro ao carregar dados do Firebase: ", error);
   }
@@ -42,7 +42,8 @@ window.salvar = async function(event) {
   if (event) event.preventDefault();
 
   const tipo = document.getElementById('tipo')?.value || 'entrada';
-  const aplicativo = document.getElementById('aplicativo')?.value || '99 Food';
+  const aplicativo = document.getElementById('app-origem')?.value || '99 Food';
+  const categoria = document.getElementById('categoria')?.value || '';
   const data = document.getElementById('data')?.value;
   const descricao = document.getElementById('descricao')?.value || '';
   const valorInput = document.getElementById('valor')?.value;
@@ -53,19 +54,21 @@ window.salvar = async function(event) {
     return;
   }
 
-  const novoLancamento = { tipo, aplicativo, data, descricao, valor };
+  const novoLancamento = { tipo, aplicativo, categoria, data, descricao, valor };
 
   try {
     await addDoc(collection(db, COLECAO), novoLancamento);
     alert("Lançamento salvo com sucesso!");
     
-    // Limpar campos de forma segura
+    // Limpar campos
     const descEl = document.getElementById('descricao');
     if (descEl) descEl.value = '';
-    const valorEl = document.getElementById('valor');
-    if (valorEl) valorEl.value = '';
-    const dataEl = document.getElementById('data');
-    if (dataEl) dataEl.valueAsDate = new Date();
+    const valEl = document.getElementById('valor');
+    if (valEl) valEl.value = '';
+    const catEl = document.getElementById('categoria');
+    if (catEl) catEl.value = '';
+    const dtEl = document.getElementById('data');
+    if (dtEl) dtEl.valueAsDate = new Date();
 
     await carregarDadosDoFirebase();
   } catch (error) {
@@ -87,54 +90,108 @@ window.excluir = async function(idDoc) {
   }
 };
 
-// Mudar de Aba de forma universal (suporta IDs, classes e exibições)
-window.mudarAba = function(aba) {
-  console.log("Mudando para a aba:", aba);
-  
-  let encontrou = false;
-  const conteudos = document.querySelectorAll('.conteudo-aba, .tab-pane, section');
-  if (conteudos.length > 0) {
-    conteudos.forEach((el, index) => {
-      if (el.id === String(aba) || index === Number(aba) || el.classList.contains(`aba-${aba}`)) {
-        el.style.display = 'block';
-        encontrou = true;
-      } else {
-        el.style.display = 'none';
-      }
-    });
-  }
+// Mudar de Aba (Ativa/Desativa conteúdos e botões)
+window.mudarAba = function(numAba) {
+  // Ocultar todas as abas e remover classe active dos botões
+  const conteudos = document.querySelectorAll('.content');
+  conteudos.forEach(c => c.classList.remove('active'));
 
-  if (!encontrou) {
-    const possiveisIds = [`aba-${aba}`, `secao-${aba}`, `${aba}`];
-    possiveisIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.style.display = 'block';
-      }
-    });
+  const botoes = document.querySelectorAll('.tabs .tab');
+  botoes.forEach(b => b.classList.remove('active'));
+
+  // Ativar a aba correspondente
+  const abaAlvo = document.getElementById(`aba-${numAba}`);
+  if (abaAlvo) {
+    abaAlvo.classList.add('active');
+  }
+  if (botoes[numAba]) {
+    botoes[numAba].classList.add('active');
   }
 };
 
-// Atualizar Tela
+// Atualizar Tela, Extratos, Totais e Saldo do Mês
 window.atualizarTela = function() {
-  const mesSelecionado = document.getElementById('filtro-mes')?.value;
-  console.log("Tela atualizada para o mês:", mesSelecionado);
+  const mesSelecionado = document.getElementById('filtro-mes')?.value; // Ex: "2026-11"
   
-  const listaEl = document.getElementById('lista-lancamentos');
-  if (listaEl && dados.length > 0) {
-    listaEl.innerHTML = dados.map(item => `
-      <div>${item.data} - ${item.aplicativo} - R$ ${item.valor} (${item.tipo})</div>
-    `).join('');
+  // Filtrar dados do mês selecionado (compara os 7 primeiros caracteres da data "YYYY-MM")
+  const dadosMes = dados.filter(item => item.data && item.data.startsWith(mesSelecionado));
+
+  let totalEntradas = 0;
+  let totalSaidas = 0;
+
+  let total99 = 0;
+  let totalKeeta = 0;
+  let totalUber = 0;
+
+  let htmlGeral = '';
+  let html99 = '';
+  let htmlKeeta = '';
+  let htmlUber = '';
+
+  dadosMes.forEach(item => {
+    const val = Number(item.valor) || 0;
+    const desc = item.descricao ? ` - ${item.descricao}` : '';
+    const cat = item.categoria ? ` (${item.categoria})` : '';
+    const btnExcluir = `<button onclick="excluir('${item.id}')" style="background:red; color:white; border:none; padding:2px 6px; cursor:pointer; margin-left:10px;">Excluir</button>`;
+    
+    const linhaHtml = `<div style="padding: 6px 0; border-bottom: 1px solid #eee;">${item.data.split('-').reverse().join('/')} | <b>${item.aplicativo || item.tipo}</b>: R$ ${val.toFixed(2)}${cat}${desc} ${btnExcluir}</div>`;
+
+    htmlGeral += linhaHtml;
+
+    if (item.tipo === 'entrada') {
+      totalEntradas += val;
+      if (item.aplicativo === '99 Food') {
+        total99 += val;
+        html99 += linhaHtml;
+      } else if (item.aplicativo === 'Keeta') {
+        totalKeeta += val;
+        htmlKeeta += linhaHtml;
+      } else if (item.aplicativo === 'Uber') {
+        totalUber += val;
+        htmlUber += linhaHtml;
+      }
+    } else if (item.tipo === 'saida') {
+      totalSaidas += val;
+    }
+  });
+
+  // Calcular Saldo Líquido do Mês (Entradas - Saídas)
+  const saldoMes = totalEntradas - totalSaidas;
+
+  // Atualizar elementos na tela
+  const saldoEl = document.getElementById('saldo-total');
+  if (saldoEl) {
+    saldoEl.innerText = `R$ ${saldoMes.toFixed(2)}`;
+    saldoEl.style.color = saldoMes < 0 ? '#ff4d4d' : '#2ecc71';
   }
+
+  const listaGeralEl = document.getElementById('lista-geral');
+  if (listaGeralEl) listaGeralEl.innerHTML = htmlGeral || '<p>Nenhum lançamento neste mês.</p>';
+
+  const lista99El = document.getElementById('lista-99');
+  if (lista99El) lista99El.innerHTML = html99 || '<p>Nenhum ganho registrado.</p>';
+  const t99El = document.getElementById('total-99');
+  if (t99El) t99El.innerText = `R$ ${total99.toFixed(2)}`;
+
+  const listaKeetaEl = document.getElementById('lista-keeta');
+  if (listaKeetaEl) listaKeetaEl.innerHTML = htmlKeeta || '<p>Nenhum ganho registrado.</p>';
+  const tKeetaEl = document.getElementById('total-keeta');
+  if (tKeetaEl) tKeetaEl.innerText = `R$ ${totalKeeta.toFixed(2)}`;
+
+  const listaUberEl = document.getElementById('lista-uber');
+  if (listaUberEl) listaUberEl.innerHTML = htmlUber || '<p>Nenhum ganho registrado.</p>';
+  const tUberEl = document.getElementById('total-uber');
+  if (tUberEl) tUberEl.innerText = `R$ ${totalUber.toFixed(2)}`;
 };
 
-// Verificar Tipo
+// Controlar exibição da categoria de despesa
 window.verificarTipo = function() {
   const tipo = document.getElementById('tipo')?.value;
-  const categoriaContainer = document.getElementById('categoria-container');
-  if (categoriaContainer) {
-    categoriaContainer.style.display = (tipo === 'saida') ? 'block' : 'none';
-  }
+  const blocoCat = document.getElementById('bloco-categoria');
+  const blocoApp = document.getElementById('bloco-app');
+  
+  if (blocoCat) blocoCat.style.display = (tipo === 'saida') ? 'block' : 'none';
+  if (blocoApp) blocoApp.style.display = (tipo === 'saida') ? 'none' : 'block';
 };
 
 // Inicialização ao carregar a página
