@@ -114,4 +114,8 @@ window.excluir = async function(idDoc) {
             await carregarDadosDoFirebase();
         } catch (error) {
             console.error("Erro ao excluir: ", error);
-            alert("Erro ao excluir
+            alert("Erro ao excluir.");
+window.mudarAba = mudarAba;
+window.salvar = salvar;
+window.excluir = excluir;
+window.atualizarTela = atualizarTela;
