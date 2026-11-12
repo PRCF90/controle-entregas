@@ -1,5 +1,40 @@
-let dados = JSON.parse(localStorage.getItem('controle_entregas_v5')) || [];
+// Importações do Firebase (SDK Modular v10 via CDN)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// ⚠️ COLOQUE AQUI AS SUAS CREDENCIAIS DO SEU PROJETO FIREBASE
+const firebaseConfig = {
+    apiKey: "SUA_API_KEY_AQUI",
+    authDomain: "seu-projeto.firebaseapp.com",
+    projectId: "seu-projeto-id",
+    storageBucket: "seu-projeto.appspot.com",
+    messagingSenderId: "SEU_SENDER_ID",
+    appId: "SEU_APP_ID"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const COLECAO = "lancamentos_entregas";
+
+let dados = [];
 document.getElementById('data').valueAsDate = new Date();
+
+// Carregar dados do Firebase ao iniciar a página
+async function carregarDadosDoFirebase() {
+    try {
+        const q = query(collection(db, COLECAO), orderBy("data", "desc"));
+        const querySnapshot = await getDocs(q);
+        dados = [];
+        querySnapshot.forEach((docSnap) => {
+            dados.push({ idDoc: docSnap.id, ...docSnap.data() });
+        });
+        atualizarTela();
+    } catch (error) {
+        console.error("Erro ao carregar dados do Firebase: ", error);
+        alert("Erro ao sincronizar com o Firebase. Verifique as credenciais.");
+    }
+}
 
 function mudarAba(index) {
     const botoes = document.querySelectorAll('.tab');
@@ -22,7 +57,7 @@ function verificarTipo() {
     }
 }
 
-function salvar() {
+async function salvar() {
     const tipo = document.getElementById('tipo').value;
     const data = document.getElementById('data').value;
     const descricao = document.getElementById('descricao').value.trim();
@@ -45,34 +80,50 @@ function salvar() {
     }
 
     const novoLancamento = {
-        id: Date.now(),
         tipo,
         data,
         categoria,
         appOrigem,
         descricao,
-        valor
+        valor,
+        criadoEm: Date.now()
     };
 
-    dados.push(novoLancamento);
-    localStorage.setItem('controle_entregas_v5', JSON.stringify(dados));
+    try {
+        // Salva diretamente na nuvem do Firebase
+        await addDoc(collection(db, COLECAO), novoLancamento);
+        
+        document.getElementById('filtro-mes').value = data.slice(0, 7);
+        document.getElementById('descricao').value = '';
+        document.getElementById('valor').value = '';
+        if(tipo === 'saida') document.getElementById('categoria').value = '';
 
-    document.getElementById('filtro-mes').value = data.slice(0, 7);
-    document.getElementById('descricao').value = '';
-    document.getElementById('valor').value = '';
-    if(tipo === 'saida') document.getElementById('categoria').value = '';
-
-    atualizarTela();
-    mudarAba(1);
-}
-
-function excluir(id) {
-    if (confirm('Deseja realmente excluir este lançamento?')) {
-        dados = dados.filter(item => item.id !== id);
-        localStorage.setItem('controle_entregas_v5', JSON.stringify(dados));
-        atualizarTela();
+        // Recarrega os dados atualizados da nuvem
+        await carregarDadosDoFirebase();
+        mudarAba(1);
+    } catch (error) {
+        console.error("Erro ao salvar lançamento: ", error);
+        alert("Erro ao salvar no Firebase.");
     }
 }
+
+window.excluir = async function(idDoc) {
+    if (confirm('Deseja realmente excluir este lançamento da nuvem?')) {
+        try {
+            await deleteDoc(doc(db, COLECAO, idDoc));
+            await carregarDadosDoFirebase();
+        } catch (error) {
+            console.error("Erro ao excluir: ", error);
+            alert("Erro ao excluir o item.");
+        }
+    }
+}
+
+// Tornar funções globais acessíveis pelo HTML
+window.mudarAba = mudarAba;
+window.verificarTipo = verificarTipo;
+window.salvar = salvar;
+window.atualizarTela = atualizarTela;
 
 function atualizarTela() {
     const mesSelecionado = document.getElementById('filtro-mes').value;
@@ -81,10 +132,9 @@ function atualizarTela() {
     let htmlGeral = '', html99 = '', htmlKeeta = '', htmlUber = '';
     let soma99 = 0, somaKeeta = 0, somaUber = 0;
 
-    let dadosMes = dados.filter(item => item.data.startsWith(mesSelecionado));
-    let dadosOrdenados = dadosMes.sort((a, b) => new Date(b.data) - new Date(a.data));
+    let dadosMes = dados.filter(item => item.data && item.data.startsWith(mesSelecionado));
 
-    dadosOrdenados.forEach(item => {
+    dadosMes.forEach(item => {
         if (item.tipo === 'entrada') {
             saldoMes += item.valor;
         } else {
@@ -104,7 +154,7 @@ function atualizarTela() {
                 </div>
                 <div>
                     <span class="${cor}">${sinal} R$ ${item.valor.toFixed(2)}</span><br>
-                    <button onclick="excluir(${item.id})" style="color:red; background:none; border:none; cursor:pointer; font-size:11px; margin-top:4px;">Excluir</button>
+                    <button onclick="excluir('${item.idDoc}')" style="color:red; background:none; border:none; cursor:pointer; font-size:11px; margin-top:4px;">Excluir</button>
                 </div>
             </div>
         `;
@@ -155,6 +205,7 @@ function renderizarAnual() {
     });
 
     dados.forEach(item => {
+        if (!item.data) return;
         let chave = item.data.slice(0, 7);
         if (!resumo[chave]) {
             let mesNum = item.data.slice(5, 7);
@@ -207,4 +258,5 @@ function renderizarAnual() {
     document.getElementById('tabela-anual').innerHTML = html;
 }
 
-atualizarTela();
+// Inicia o carregamento dos dados da nuvem ao abrir o app
+carregarDadosDoFirebase();
